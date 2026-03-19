@@ -6,21 +6,6 @@
 #include "random.h"
 #include "random_walk.h"
 
-std::vector<double> Cumsum(const std::vector<double>& vec) {
-    std::vector<double> cumsum_vec(vec.size());
-
-    cumsum_vec[0] = vec[0];
-    for (int i = 1; i < vec.size(); i++) {
-        cumsum_vec[i] = cumsum_vec[i-1] + vec[i];
-    }
-
-    return cumsum_vec;
-}
-
-double f(double x) {
-    return std::cos(M_PI*x/2.)*M_PI/2.;
-}
-
 int main (int argc, char *argv[]){
 
     Random rnd;
@@ -56,6 +41,7 @@ int main (int argc, char *argv[]){
     int L = M/N;
     int max_steps = 100;
     std::vector<double> quadratic_distances(max_steps), quadratic_distances_errors(max_steps);
+    std::vector<std::vector<double>> positions(M, std::vector<double>{0.,0.,0.});
 
     for (int i = 0; i < max_steps; i++) {
         std::vector<double> datablocks(N), datablocks2(N);
@@ -63,10 +49,15 @@ int main (int argc, char *argv[]){
         double sum_datablocks = 0.;
         double sum_datablocks2 = 0.;
 
+        for (int j = 0; j < M; j++) {
+            for (auto RW : positions) {
+                RW = RW_step_lattice(RW, rnd);
+            }
+        }
         for (int j = 0; j < N; j++) {
             double sum = 0.;
             for (int k = 0; k < L; k++) {
-                sum += RW_distance_lattice(i, rnd);
+                sum += compute_distance(positions[N*j+k]);
             }
 
             //datablocks2[j] = sum / static_cast<double>(L);

@@ -27,3 +27,18 @@ double RW_distance_continuum(int steps, Random& rnd) {
     }
     return std::pow(pos[0], 2) + std::pow(pos[1], 2) + std::pow(pos[2], 2);
 }
+
+std::vector<double> RW_step_lattice(std::vector<double> pos, Random& rnd) {
+    int direction = static_cast<int>(rnd.Rannyu(0.,3.));
+    int step = 1 - 2 * static_cast<int>(rnd.Rannyu(0.,2.));
+    pos[direction] += static_cast<double>(step);
+    return pos;
+}
+
+double compute_distance(std::vector<double> pos) {
+    double distance = 0.;
+    for (double coord : pos) {
+        distance += std::pow(coord, 2);
+    }
+    return distance;
+}
