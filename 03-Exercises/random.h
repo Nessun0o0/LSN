@@ -26,6 +26,8 @@ public:
   ~Random();
   // Method to set the seed for the RNG
   void SetRandom(int * , int, int);
+  // Method to set the seed from a file
+  void SetSeedFromFile(std::string seed_file, std::string primes);
   // Method to save the seed to a file
   void SaveSeed();
   // Method to generate a random number in the range [0,1)

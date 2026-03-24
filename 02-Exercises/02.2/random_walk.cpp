@@ -35,6 +35,16 @@ std::vector<double> RW_step_lattice(std::vector<double> pos, Random& rnd) {
     return pos;
 }
 
+std::vector<double> RW_step_continuum(std::vector<double> pos, Random& rnd) {
+    double phi = rnd.Rannyu(0., 2*M_PI);
+    double theta = std::acos(1-2*rnd.Rannyu());
+
+    pos[0] += std::sin(theta)*std::cos(phi);
+    pos[1] += std::sin(theta)*std::sin(phi);
+    pos[2] += std::cos(theta);
+    return pos;
+}
+
 double compute_distance(std::vector<double> pos) {
     double distance = 0.;
     for (double coord : pos) {

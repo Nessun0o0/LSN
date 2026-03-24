@@ -10,6 +10,7 @@ _/    _/  _/_/_/  _/_/_/_/ email: Davide.Galli@unimi.it
 
 #include <iostream>
 #include <fstream>
+#include <string>
 #include <cmath>
 #include <cstdlib>
 #include "random.h"
@@ -83,6 +84,35 @@ void Random :: SetRandom(int * s, int p1, int p2){
   n4 = p2;
 
   return;
+}
+
+void Random :: SetSeedFromFile(std::string seed_file, std::string primes) {
+   int seed[4];
+   int p1, p2;
+   std::ifstream Primes(primes);
+   if (Primes.is_open()){
+      Primes >> p1 >> p2 ;
+   } else { 
+      std::cerr << "PROBLEM: Unable to open Primes" << std::endl;
+      exit(-1);
+   }
+   Primes.close();
+
+   std::ifstream input(seed_file);
+   std::string property;
+   if (input.is_open()){
+      while ( !input.eof() ){
+         input >> property;
+         if( property == "RANDOMSEED" ){
+               input >> seed[0] >> seed[1] >> seed[2] >> seed[3];
+               SetRandom(seed,p1,p2);
+         }
+      }
+      input.close();
+   } else {
+      std::cerr << "PROBLEM: Unable to open seed.in" << std::endl;
+      exit(-1);
+   }
 }
 
 /****************************************************************

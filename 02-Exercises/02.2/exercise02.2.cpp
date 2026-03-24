@@ -41,7 +41,7 @@ int main (int argc, char *argv[]){
     int L = M/N;
     int max_steps = 100;
     std::vector<double> quadratic_distances(max_steps), quadratic_distances_errors(max_steps);
-    std::vector<std::vector<double>> positions(M, std::vector<double>{0.,0.,0.});
+    std::vector<std::vector<double>> positions_lattice(M, std::vector<double>{0.,0.,0.});
 
     for (int i = 0; i < max_steps; i++) {
         std::vector<double> datablocks(N), datablocks2(N);
@@ -49,34 +49,22 @@ int main (int argc, char *argv[]){
         double sum_datablocks = 0.;
         double sum_datablocks2 = 0.;
 
-        for (int j = 0; j < M; j++) {
-            for (auto RW : positions) {
-                RW = RW_step_lattice(RW, rnd);
-            }
-        }
         for (int j = 0; j < N; j++) {
             double sum = 0.;
             for (int k = 0; k < L; k++) {
-                sum += compute_distance(positions[N*j+k]);
+                int index = N*j+k;
+                positions_lattice[index] = RW_step_lattice(positions_lattice[index], rnd);
+                sum += compute_distance(positions_lattice[index]);
             }
 
-            //datablocks2[j] = sum / static_cast<double>(L);
-            //datablocks[j] = std::sqrt(datablocks2[j]);
-            sum_datablocks2 += sum / static_cast<double>(L);
             sum_datablocks += std::sqrt(sum / static_cast<double>(L));
+            sum_datablocks2 += sum / static_cast<double>(L);
         }
 
-        
-        /*for (int j = 0; j < N; j++) {
-            sum_datablocks += datablocks[j];
-            sum_datablocks2 += datablocks2[j];
-        }*/
         sum_datablocks /= static_cast<double>(N);
         sum_datablocks2 /= static_cast<double>(N);
         quadratic_distances[i] = sum_datablocks;
         quadratic_distances_errors[i] = std::sqrt((sum_datablocks2 - std::pow(sum_datablocks, 2))/static_cast<double>(N-1));
-        //std::cout << sum_datablocks << " " << sum_datablocks2 << " " << std::sqrt((sum_datablocks2 - std::pow(sum_datablocks, 2))/static_cast<double>(N-1)) << std::endl;
-        //std::cout << "\n";
     }
     
     std::ofstream outfile;
@@ -87,6 +75,40 @@ int main (int argc, char *argv[]){
             outfile << i << " " << quadratic_distances[i] << " " << quadratic_distances_errors[i] << std::endl;
         }
     } else std::cerr << "Error: unable to write RW_lattice.out" << std::endl;
+    outfile.close();
+
+    std::vector<std::vector<double>> positions_continuum(M, std::vector<double>{0.,0.,0.});
+
+    for (int i = 0; i < max_steps; i++) {
+        std::vector<double> datablocks(N), datablocks2(N);
+        
+        double sum_datablocks = 0.;
+        double sum_datablocks2 = 0.;
+
+        for (int j = 0; j < N; j++) {
+            double sum = 0.;
+            for (int k = 0; k < L; k++) {
+                int index = N*j+k;
+                positions_continuum[index] = RW_step_continuum(positions_continuum[index], rnd);
+                sum += compute_distance(positions_continuum[index]);
+            }
+
+            sum_datablocks += std::sqrt(sum / static_cast<double>(L));
+            sum_datablocks2 += sum / static_cast<double>(L);
+        }
+
+        sum_datablocks /= static_cast<double>(N);
+        sum_datablocks2 /= static_cast<double>(N);
+        quadratic_distances[i] = sum_datablocks;
+        quadratic_distances_errors[i] = std::sqrt((sum_datablocks2 - std::pow(sum_datablocks, 2))/static_cast<double>(N-1));
+    }
+
+    outfile.open("RW_continuum.out");
+    if (outfile.is_open()) {
+        for (int i = 0; i < max_steps; i++) {
+            outfile << i << " " << quadratic_distances[i] << " " << quadratic_distances_errors[i] << std::endl;
+        }
+    } else std::cerr << "Error: unable to write RW_continuum.out" << std::endl;
     outfile.close();
 
    return 0;

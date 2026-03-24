@@ -41,32 +41,7 @@ int write_data(const std::vector<double>& averages, const std::vector<double>& e
 int main (int argc, char *argv[]){
 
     Random rnd;
-    int seed[4];
-    int p1, p2;
-    std::ifstream Primes("Primes");
-    if (Primes.is_open()){
-        Primes >> p1 >> p2 ;
-    } else { 
-        std::cerr << "PROBLEM: Unable to open Primes" << std::endl;
-        exit(-1);
-    }
-    Primes.close();
-
-    std::ifstream input("seed.in");
-    std::string property;
-    if (input.is_open()){
-        while ( !input.eof() ){
-            input >> property;
-            if( property == "RANDOMSEED" ){
-                input >> seed[0] >> seed[1] >> seed[2] >> seed[3];
-                rnd.SetRandom(seed,p1,p2);
-            }
-        }
-        input.close();
-    } else {
-        std::cerr << "PROBLEM: Unable to open seed.in" << std::endl;
-        exit(-1);
-    }
+    rnd.SetSeedFromFile("seed.in", "Primes");
 
     const double S_0 = 100.;
     const double T = 1.;
