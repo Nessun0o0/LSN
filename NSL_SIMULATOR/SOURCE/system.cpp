@@ -246,10 +246,20 @@ void System :: initialize_velocities(){
     vec vx(_npart), vy(_npart), vz(_npart);
     vec sumv(_ndim);
     sumv.zeros();
+    vx.zeros();
+    vy.zeros();
+    vz.zeros();
+    double v_star = sqrt(3.0 * _temp);
     for (int i=0; i<_npart; i++){
-      vx(i) = _rnd.Gauss(0.,sqrt(_temp));
-      vy(i) = _rnd.Gauss(0.,sqrt(_temp));
-      vz(i) = _rnd.Gauss(0.,sqrt(_temp));
+      //vx(i) = _rnd.Gauss(0.,sqrt(_temp));
+      //vy(i) = _rnd.Gauss(0.,sqrt(_temp));
+      //vz(i) = _rnd.Gauss(0.,sqrt(_temp));
+      int direction = static_cast<int>(_rnd.Rannyu(0.,3.));
+      int sign = 1-2*static_cast<int>(_rnd.Rannyu(0.,2.));
+      if (direction == 0) vx(i) = sign*v_star;
+      else if (direction == 1) vy(i) = sign*v_star;
+      else vz(i) = sign*v_star; 
+      
       sumv(0) += vx(i);
       sumv(1) += vy(i);
       sumv(2) += vz(i);
@@ -503,6 +513,9 @@ void System :: read_configuration(){
       _particle(i).setposition(0, this->pbc(_side(0)*x, 0));
       _particle(i).setposition(1, this->pbc(_side(1)*y, 1));
       _particle(i).setposition(2, this->pbc(_side(2)*z, 2));
+      //_particle(i).setposition(0, this->pbc(_halfside(0)*x, 0));
+      //_particle(i).setposition(1, this->pbc(_halfside(1)*y, 1));
+      //_particle(i).setposition(2, this->pbc(_halfside(2)*z, 2));
       _particle(i).acceptmove(); // _x_old = _x_new
     }
   } else cerr << "PROBLEM: Unable to open INPUT file config.xyz"<< endl;
