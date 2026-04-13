@@ -66,7 +66,7 @@ double System :: Force(int i, int dim){
 
 void System :: move(int i){ // Propose a MC move for particle i
   if(_sim_type == 3){ //Gibbs sampler for Ising
-    double prob = 1. / (1 + exp(-2*_beta*_J*(_particle(this->pbc(i-1)).getspin() + _particle(this->pbc(i+1)).getspin())));
+    double prob = 1. / (1 + exp(-2*_beta*_J*(_particle(this->pbc(i-1)).getspin() + _particle(this->pbc(i+1)).getspin() + _H)));
     if (_rnd.Rannyu() < prob) _particle(i).setspin(1);
     else _particle(i).setspin(-1);
     _naccepted++;
@@ -720,10 +720,10 @@ void System :: averages(int blk){
     average  = _average(_index_magnet);
     sum_average = _global_av(_index_magnet);
     sum_ave2 = _global_av2(_index_magnet);
-    coutf << setw(12) << blk
-          << setw(12) << average
-          << setw(12) << sum_average/double(blk)
-          << setw(12) << this->error(sum_average, sum_ave2, blk) << endl;
+    coutf << setw(15) << blk
+          << setw(15) << average
+          << setw(15) << sum_average/double(blk)
+          << setw(15) << this->error(sum_average, sum_ave2, blk) << endl;
     coutf.close();
   }
   // SPECIFIC HEAT /////////////////////////////////////////////////////////////
@@ -732,10 +732,10 @@ void System :: averages(int blk){
     average  = _average(_index_cv);
     sum_average = _global_av(_index_cv);
     sum_ave2 = _global_av2(_index_cv);
-    coutf << setw(12) << blk
-          << setw(12) << average
-          << setw(12) << sum_average/double(blk)
-          << setw(12) << this->error(sum_average, sum_ave2, blk) << endl;
+    coutf << setw(15) << blk
+          << setw(15) << average
+          << setw(15) << sum_average/double(blk)
+          << setw(15) << this->error(sum_average, sum_ave2, blk) << endl;
     coutf.close();
   }
   // SUSCEPTIBILITY ////////////////////////////////////////////////////////////
@@ -744,10 +744,10 @@ void System :: averages(int blk){
     average  = _average(_index_chi);
     sum_average = _global_av(_index_chi);
     sum_ave2 = _global_av2(_index_chi);
-    coutf << setw(12) << blk
-          << setw(12) << average
-          << setw(12) << sum_average/double(blk)
-          << setw(12) << this->error(sum_average, sum_ave2, blk) << endl;
+    coutf << setw(15) << blk
+          << setw(15) << average
+          << setw(15) << sum_average/double(blk)
+          << setw(15) << this->error(sum_average, sum_ave2, blk) << endl;
     coutf.close();
   }
   // ACCEPTANCE ////////////////////////////////////////////////////////////////

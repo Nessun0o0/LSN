@@ -17,3 +17,5 @@ clean :
 remove:
 	rm ../OUTPUT/*.*
 	rm ../OUTPUT/CONFIG/*.*
+	rm ../OUTPUT-METROPOLIS
+	rm ../OUPUT-GIBBS
