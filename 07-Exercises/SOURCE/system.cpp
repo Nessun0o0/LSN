@@ -360,7 +360,7 @@ void System :: initialize_properties(){ // Initialize data members used for meas
         coutgr.close();
         input>>_n_bins;
         _nprop+=_n_bins;
-        _bin_size = (_halfside.min() )/(double)_n_bins;
+        _bin_size = (_halfside.min() * sqrt(3.))/(double)_n_bins;
         _measure_gofr = true;
         _index_gofr = index_property;
         index_property+= _n_bins;
@@ -712,7 +712,7 @@ void System :: averages(int blk){
 
     if (blk == _nblocks) {
       coutf.open("../OUTPUT/gofr.dat",ios::app);
-      for (int i=0; i<_n_bins_v; i++) {
+      for (int i=0; i<_n_bins; i++) {
         sum_average = _global_av(_index_gofr + i);
         sum_ave2 = _global_av2(_index_gofr + i);
         coutf << setw(12) << i*_bin_size
