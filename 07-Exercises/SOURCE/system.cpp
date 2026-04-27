@@ -360,7 +360,7 @@ void System :: initialize_properties(){ // Initialize data members used for meas
         coutgr.close();
         input>>_n_bins;
         _nprop+=_n_bins;
-        _bin_size = (_halfside.min() * sqrt(3.))/(double)_n_bins;
+        _bin_size = _halfside.min()/(double)_n_bins;
         _measure_gofr = true;
         _index_gofr = index_property;
         index_property+= _n_bins;
@@ -560,7 +560,7 @@ void System :: measure(){ // Measure properties
         distance(2) = this->pbc( _particle(i).getposition(2,true) - _particle(j).getposition(2,true), 2);
         dr = sqrt( dot(distance,distance) );
         // GOFR
-        if (_measure_gofr) _measurement(_index_gofr + static_cast<int>(dr/_bin_size)) += 2.;
+        if (_measure_gofr && dr < _halfside.min()) _measurement(_index_gofr + static_cast<int>(dr/_bin_size)) += 2.;
         if(dr < _r_cut){
           if(_measure_penergy)  penergy_temp += 1.0/pow(dr,12) - 1.0/pow(dr,6); // POTENTIAL ENERGY
           if(_measure_pressure) virial       += 1.0/pow(dr,12) - 0.5/pow(dr,6); // PRESSURE
