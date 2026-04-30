@@ -604,7 +604,10 @@ void System :: measure(){ // Measure properties
   // TEMPERATURE ///////////////////////////////////////////////////////////////
   if (_measure_temp and _measure_kenergy) _measurement(_index_temp) = (2.0/3.0) * kenergy_temp;
   // PRESSURE //////////////////////////////////////////////////////////////////
-  if (_measure_pressure) _measurement[_index_pressure] = _rho * (2.0/3.0) * kenergy_temp + (_ptail*_npart + 48.0*virial/3.0)/_volume;
+  if (_measure_pressure) {
+    if (_sim_type == 1) kenergy_temp = 1.5 * _temp;
+    _measurement(_index_pressure) = _rho * (2.0/3.0) * kenergy_temp + (_ptail*_npart + 48.0*virial/3.0)/_volume;
+  }
   // MAGNETIZATION /////////////////////////////////////////////////////////////
   if (_measure_magnet) {
     for (auto particle : _particle) magnetization += static_cast<double>(particle.getspin());
