@@ -51,6 +51,7 @@ int main(int argc, char *argv[]) {
 
     ofstream output("output_1.out");
     if (output.is_open()) {
+        output << "# BLOCK\tENERGY\tERROR\n";
         for (int i = 0; i < N; i++) {
             output << i+1 << "\t" << sum_H[i] / (i+1) << "\t" << error_H[i] << endl;
         }
