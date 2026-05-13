@@ -1,13 +1,18 @@
 #include "population.h"
+#include <iostream>
 
 Population :: Population (double n_individuals, int n_cities, const vector<vector<double>>& city_coordinates, Random* rnd) {
     _n_cities = n_cities;
     _city_coordinates = city_coordinates;
     _n_individuals = n_individuals;
     _rnd = rnd;
+    _mutation_probs = {0.1,0.1,0.1,0.1};
+    _crossover_prob = 0.7;
+    _selection_exponent = 2;
     this->set_starting_population();
-    check_population_constraints();
-    order_fitness();
+    this->check_population_constraints();
+    this->order_fitness();
+    _elite = _population[0];
 }
 
 void Population :: set_starting_population() {
@@ -17,11 +22,9 @@ void Population :: set_starting_population() {
     }
     _population = vector<Individual>(_n_individuals, ordered_cities);
     for (int i = 0; i < _n_individuals; i++) {
-        int n_shuffles = static_cast<int>(_rnd->Rannyu(0.,_n_cities));
-        for (int j = 0; j < n_shuffles; j++) {
-            int a = static_cast<int>(_rnd->Rannyu(1.,_n_cities));
-            int b = static_cast<int>(_rnd->Rannyu(1.,_n_cities));
-            _population[i].pair_permutation(a, b);
+        for (int j = 1; j < _n_cities; j++) {
+            int a = static_cast<int>(_rnd->Rannyu(static_cast<double>(j),_n_cities));
+            _population[i].pair_permutation(j, a);
         }
     }
 }
@@ -41,5 +44,69 @@ void Population :: order_fitness() {
 
 vector<Individual> Population :: selection() {
     vector<Individual> new_population(_n_individuals);
+
+    for (int i = 0; i < _n_individuals; i++) {
+        int j = static_cast<int>(_n_individuals*pow(_rnd->Rannyu(), _selection_exponent));
+        if (_rnd->Rannyu() >= _crossover_prob || i == _n_individuals-1) {
+            new_population[i] = _population[j];
+            continue;
+        }
+        int k = static_cast<int>(_n_individuals*pow(_rnd->Rannyu(), _selection_exponent));
+        new_population[i] = this->crossover(_population[j], _population[k]);
+        new_population[i+1] = this->crossover(_population[k], _population[j]);
+        i++;
+    }
+
     return new_population;
+}
+
+void Population :: evolve_population() {
+    vector<Individual> new_population = this->selection();
+
+    for (Individual& individual : new_population) {
+        if (_rnd->Rannyu() < _mutation_probs[0]) {
+            int a = static_cast<int>(_rnd->Rannyu()*(_n_cities-1))+1;
+            int b = static_cast<int>(_rnd->Rannyu()*(_n_cities-1))+1;
+            individual.pair_permutation(a, b);
+        }
+        if (_rnd->Rannyu() < _mutation_probs[1]) {
+            int m = static_cast<int>(_rnd->Rannyu()*(_n_cities-2))+1;
+            int n = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-m))+1;
+            int start = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-m-n))+1;
+            individual.gene_shift(n, m, start);
+        }
+        if (_rnd->Rannyu() < _mutation_probs[2]) {
+            int n = static_cast<int>(_rnd->Rannyu()*((_n_cities-1)/2))+1;
+            int start = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-n))+1;
+            int end = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-n-start))+1;
+            individual.multiple_permutation(start, end, n);
+        }
+        if (_rnd->Rannyu() < _mutation_probs[3]) {
+            int m = static_cast<int>(_rnd->Rannyu()*(_n_cities-2))+2;
+            individual.inversion(m);
+        }
+    }
+
+    _population = new_population;
+    this->check_population_constraints();
+    this->order_fitness();
+    if (_population[0].get_fitness() < _elite.get_fitness()) _elite = _population[0];
+}
+
+Individual Population :: crossover(const Individual& mother, const Individual& father) {
+    Individual child = mother;
+    int cut = static_cast<int>(_rnd->Rannyu()*(_n_cities-3))+2;
+    int substituted = 0;
+    for (int i = 0; i < _n_cities; i++) {
+        int city = father.get_chromosome()[i];
+        for (int j = cut+substituted; j < _n_cities; j++) {
+            if (child.get_chromosome()[j] == city) { 
+                child.pair_permutation(cut+substituted, j);
+                if (++substituted == _n_cities - cut) return child;
+                break;
+            }
+        }
+    }
+
+    return child;
 }

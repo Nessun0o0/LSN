@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <cmath>
+#include <stdexcept>
 
 using namespace std;
 
@@ -13,8 +14,11 @@ class Individual {
 
         void compute_fitness(const vector<vector<double>>& city_coordinates);
         void pair_permutation(int a, int b);
+        void gene_shift(int shift_length, int n_contiguous_genes, int start);
+        void multiple_permutation(int start, int end, int shift_length);
+        void inversion(int m);
 
-        const vector<int>& get_chromosome() {return _chromosome;};
+        const vector<int>& get_chromosome() const {return _chromosome;};
         double get_fitness() {return _fitness;};
 
         bool check_constraints();
