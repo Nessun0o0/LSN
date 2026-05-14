@@ -1,11 +1,14 @@
 #include "population.h"
 #include <iostream>
 
-Population :: Population (double n_individuals, int n_cities, const vector<vector<double>>& city_coordinates, Random* rnd) {
+Population :: Population (double n_individuals, int n_cities, const vector<vector<double>>& city_coordinates, double temperature, Random* rnd) {
     _n_cities = n_cities;
     _city_coordinates = city_coordinates;
     _n_individuals = n_individuals;
     _rnd = rnd;
+    _temperature = temperature;
+    _n_accepted = 0;
+    _n_moves = 0;
     _mutation_probs = {0.1,0.1,0.1,0.1};
     _crossover_prob = 0.7;
     _selection_exponent = 2;
@@ -109,4 +112,42 @@ Individual Population :: crossover(const Individual& mother, const Individual& f
     }
 
     return child;
+}
+
+void Population :: metropolis_move() {
+    Individual child = _population[0];
+
+    int mutation_type = static_cast<int>(_rnd->Rannyu()*4);
+    if (mutation_type == 0) {
+        int a = static_cast<int>(_rnd->Rannyu()*(_n_cities-1))+1;
+        int b = static_cast<int>(_rnd->Rannyu()*(_n_cities-1))+1;
+        child.pair_permutation(a, b);
+    }
+    else if (mutation_type == 1) {
+        int m = static_cast<int>(_rnd->Rannyu()*(_n_cities-2))+1;
+        int n = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-m))+1;
+        int start = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-m-n))+1;
+        child.gene_shift(n, m, start);
+    }
+    else if (mutation_type == 2) {
+        int n = static_cast<int>(_rnd->Rannyu()*((_n_cities-1)/2))+1;
+        int start = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-n))+1;
+        int end = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-n-start))+1;
+        child.multiple_permutation(start, end, n);
+    }
+    if (mutation_type == 3) {
+        int m = static_cast<int>(_rnd->Rannyu()*(_n_cities-2))+2;
+        child.inversion(m);
+    }
+
+    this->check_population_constraints();
+    child.compute_fitness(_city_coordinates);
+
+    double acceptance = exp(_beta*(_population[0].get_fitness() - child.get_fitness()));
+    if (_rnd->Rannyu() < acceptance) {
+        _population[0] = child;
+        _n_accepted++;
+        if (child.get_fitness() < _elite.get_fitness()) _elite = child;
+    }
+    _n_moves++;
 }
