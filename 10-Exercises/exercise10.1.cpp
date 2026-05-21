@@ -16,66 +16,88 @@ int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    vector<MPI_Status> status(size-1);
-    vector<MPI_Request> requests(size-1);
 
+    
     Random rnd;
     rnd.SetSeedFromFile("seed.in", "Primes", rank);
     
-    double n_cities, n_individuals, n_generations;
-
+    int n_cities, n_individuals, n_generations;
+    double d_temp;
+    
     ifstream input("input.dat");
     if (input.is_open()) {
-        input >> n_cities >> n_individuals >> n_generations;
+        input >> n_cities >> n_individuals >> n_generations >> d_temp;
     } else {
         cerr << "ERROR: can't open input.dat" << endl;
         exit(-1);
     }
     input.close();
 
-    vector<vector<double>> city_coordinates(n_cities);
+    vector<vector<double>> city_coordinates(n_cities, vector<double>(2, 0.));
 
-    // Place cities on a circumference
-    double dtheta = 2*M_PI / static_cast<double>(n_cities);
-    for (int i = 0; i < n_cities; i++) {
-        vector<double> coordinate(2);
-        coordinate[0] = cos(dtheta*i);
-        coordinate[1] = sin(dtheta*i);
-        city_coordinates[i] = coordinate;
+    if (rank == 0) {
+        input.open("cap_prov_ita.dat");
+        if (input.is_open()) {
+            for (int i = 0; i < n_cities; i++) {
+                //input >> x >> y;
+                input >> city_coordinates[i][0] >> city_coordinates[i][1];
+                //city_coordinates[i] = vector<double>{x,y};
+            }
+        } else {
+            cerr << "ERROR: can't open cap_prov_ita.dat" << endl;
+            exit(-1);
+        }
     }
+    for (int i = 0; i < n_cities; i++) MPI_Bcast(&city_coordinates[i][0], 2, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
     try {
 
-        Population pop(n_individuals, n_cities, city_coordinates, rank+0.1, &rnd);
+        Population pop(n_individuals, n_cities, city_coordinates, rank*d_temp+0.1, &rnd);
 
         for (int i = 0; i < n_generations; i++) {
             pop.metropolis_move();
+            MPI_Status status;
             bool exchange = false;
             vector<int> next_chromosome(n_cities);
-            if (rank != 0) MPI_Send(&pop.get_population()[0].get_chromosome()[0], n_cities, MPI_INTEGER, rank-1, rank-1, MPI_COMM_WORLD, &requests[rank-1]);
+            if (rank != 0) MPI_Send(&pop.get_population()[0].get_chromosome()[0], n_cities, MPI_INT, rank-1, rank-1, MPI_COMM_WORLD);
             if (rank != size-1) {
-                MPI_Recv(&next_chromosome[0], n_cities, MPI_INTEGER, rank+1, rank, MPI_COMM_WORLD, &status[rank]);
+                MPI_Recv(&next_chromosome[0], n_cities, MPI_INT, rank+1, rank, MPI_COMM_WORLD, &status);
                 Individual next_individual(next_chromosome);
                 next_individual.compute_fitness(city_coordinates);
-                double next_beta = 5.; // TEMPORANEO
-                if (rnd.Rannyu() < exp(-(pop.get_beta() - next_beta)*(next_individual.get_fitness() - pop.get_population()[0].get_fitness()))) {
-                    exchange = true;
-                }
-                MPI_Send(&exchange, 1, MPI_LOGICAL, rank+1, rank+1, MPI_COMM_WORLD, &requests[rank-1]);
+                double next_beta = 1./(0.1+d_temp*(rank+1)); // TEMPORANEO
+                double acceptance = exp(-(pop.get_beta() - next_beta)*(next_individual.get_fitness() - pop.get_population()[0].get_fitness()));
+                if (rnd.Rannyu() < acceptance) exchange = true;
+                MPI_Send(&exchange, 1, MPI_CXX_BOOL, rank+1, rank+1, MPI_COMM_WORLD);
                 if (exchange) {
-                    MPI_Send(&pop.get_population()[0].get_chromosome()[0], n_cities, MPI_INTEGER, rank+1, rank+1, MPI_COMM_WORLD, &requests[rank-1]);
+                    MPI_Send(&pop.get_population()[0].get_chromosome()[0], n_cities, MPI_INT, rank+1, rank+1, MPI_COMM_WORLD);
+                    //cout << "Exchange between " << rank << " and " << rank+1 << " with acceptance " << acceptance << endl;
                     pop.get_population()[0].set_chromosome(next_chromosome);
                 }
-            }    
+            }
+            if (rank != 0) {
+                bool exchange_signal;
+                MPI_Recv(&exchange_signal, 1, MPI_CXX_BOOL, rank-1, rank, MPI_COMM_WORLD, &status);
+                if (exchange_signal) {
+                    vector<int> exchange_chromosome(n_cities);
+                    MPI_Recv(&exchange_chromosome[0], n_cities, MPI_INT, rank-1, rank, MPI_COMM_WORLD, &status);
+                    pop.get_population()[0].set_chromosome(exchange_chromosome);
+                }
+            }
 
         }
 
-        Individual elite = pop.get_elite();
+        if (rank == 0) {
+            Individual elite = pop.get_elite();
 
-        for (int j = 0; j < n_cities; j++) {
+            ofstream output("output.out");
+            if (output.is_open()) {
+                for (int j = 0; j < n_cities; j++) {
 
-            cout << elite.get_chromosome()[j] << " ";      
+                    output << elite.get_chromosome()[j] << "\n";      
+                }
+            }
+            cout << elite.get_fitness() << endl;
         }
-        cout << endl << elite.get_fitness() << endl;
 
     } catch (const exception& err) {
         cerr << err.what() << endl;

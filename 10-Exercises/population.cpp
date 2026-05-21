@@ -7,6 +7,7 @@ Population :: Population (double n_individuals, int n_cities, const vector<vecto
     _n_individuals = n_individuals;
     _rnd = rnd;
     _temperature = temperature;
+    _beta = 1./temperature;
     _n_accepted = 0;
     _n_moves = 0;
     _mutation_probs = {0.1,0.1,0.1,0.1};
