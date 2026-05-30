@@ -8,4 +8,6 @@ exercise03.1.o : exercise03.1.cpp random.h
 random.o : random.cpp random.h
 	$(CC) -c $< -o $@ $(CFLAGS)
 clean :
-	rm *.o exercise03.1.exe *.out
+	rm *.o exercise03.1.exe
+remove :
+	rem *.out

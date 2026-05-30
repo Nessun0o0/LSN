@@ -23,32 +23,7 @@ double f(double x) {
 int main (int argc, char *argv[]){
 
     Random rnd;
-    int seed[4];
-    int p1, p2;
-    std::ifstream Primes("Primes");
-    if (Primes.is_open()){
-        Primes >> p1 >> p2 ;
-    } else { 
-        std::cerr << "PROBLEM: Unable to open Primes" << std::endl;
-        exit(-1);
-    }
-    Primes.close();
-
-    std::ifstream input("seed.in");
-    std::string property;
-    if (input.is_open()){
-        while ( !input.eof() ){
-            input >> property;
-            if( property == "RANDOMSEED" ){
-                input >> seed[0] >> seed[1] >> seed[2] >> seed[3];
-                rnd.SetRandom(seed,p1,p2);
-            }
-        }
-        input.close();
-    } else {
-        std::cerr << "PROBLEM: Unable to open seed.in" << std::endl;
-        exit(-1);
-    }
+    rnd.SetSeedFromFile("seed.in", "Primes");
 
     int M = 10000;
     int N = 100;
@@ -56,6 +31,7 @@ int main (int argc, char *argv[]){
     std::vector<double> uniform(N), uniform2(N);
     std::vector<double> cumsum_uniform(N), cumsum_uniform2(N), errors_uniform(N);
 
+    // Uniform distribution
     for (int i = 0; i < N; i++) {
         double sum = 0.;
         for (int j = 0; j < L; j++) {
@@ -78,6 +54,7 @@ int main (int argc, char *argv[]){
         errors_uniform[i] = std::sqrt((cumsum_uniform2[i] - std::pow(cumsum_uniform[i], 2)) / static_cast<double>(i));
     }
 
+    // Importance sampling
     std::vector<double> importance(N), importance2(N);
     std::vector<double> cumsum_importance(N), cumsum_importance2(N), errors_importance(N);
 
@@ -106,7 +83,7 @@ int main (int argc, char *argv[]){
 
     std::ofstream outfile;
 
-    outfile.open("uniform.out");
+    outfile.open("OUTPUT/uniform.out");
     if (outfile.is_open()) {
         for (int i = 0; i < N; i++) {
             outfile << N*i << " " << cumsum_uniform[i] << " " << errors_uniform[i] << std::endl;
@@ -114,7 +91,7 @@ int main (int argc, char *argv[]){
     } else std::cerr << "Error: unable to write uniform.out" << std::endl;
     outfile.close();
 
-    outfile.open("importance.out");
+    outfile.open("OUTPUT/importance.out");
     if (outfile.is_open()) {
         for (int i = 0; i < N; i++) {
             outfile << N*i << " " << cumsum_importance[i] << " " << errors_importance[i] << std::endl;

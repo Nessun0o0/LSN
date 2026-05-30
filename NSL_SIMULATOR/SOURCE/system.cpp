@@ -66,7 +66,10 @@ double System :: Force(int i, int dim){
 
 void System :: move(int i){ // Propose a MC move for particle i
   if(_sim_type == 3){ //Gibbs sampler for Ising
-    // TO BE FIXED IN EXERCISE 6
+    double prob = 1. / (1 + exp(-2*_beta*_J*(_particle(this->pbc(i-1)).getspin() + _particle(this->pbc(i+1)).getspin() + _H)));
+    if (_rnd.Rannyu() < prob) _particle(i).setspin(1);
+    else _particle(i).setspin(-1);
+    _naccepted++;
   } else {           // M(RT)^2
     if(_sim_type == 1){       // LJ system
       vec shift(_ndim);       // Will store the proposed translation
@@ -251,14 +254,17 @@ void System :: initialize_velocities(){
     vz.zeros();
     double v_star = sqrt(3.0 * _temp);
     for (int i=0; i<_npart; i++){
-      //vx(i) = _rnd.Gauss(0.,sqrt(_temp));
-      //vy(i) = _rnd.Gauss(0.,sqrt(_temp));
-      //vz(i) = _rnd.Gauss(0.,sqrt(_temp));
+      vx(i) = _rnd.Gauss(0.,sqrt(_temp));
+      vy(i) = _rnd.Gauss(0.,sqrt(_temp));
+      vz(i) = _rnd.Gauss(0.,sqrt(_temp));
+      // Used in exercise 04.2 for the low entropic initial configuration that has a Dirac delta as the initial velocity distribution
+      /*
       int direction = static_cast<int>(_rnd.Rannyu(0.,3.));
       int sign = 1-2*static_cast<int>(_rnd.Rannyu(0.,2.));
       if (direction == 0) vx(i) = sign*v_star;
       else if (direction == 1) vy(i) = sign*v_star;
       else vz(i) = sign*v_star; 
+      */
       
       sumv(0) += vx(i);
       sumv(1) += vy(i);
@@ -319,7 +325,7 @@ void System :: initialize_properties(){ // Initialize data members used for meas
         _index_penergy = index_property;
         _measure_penergy = true;
         index_property++;
-        _vtail = 0.0; // TO BE FIXED IN EXERCISE 7
+        _vtail = 8*M_PI*_rho*(1./3.*pow(_r_cut,6)-1)/(3.*pow(_r_cut,3));
       } else if( property == "KINETIC_ENERGY" ){
         ofstream coutk("../OUTPUT/kinetic_energy.dat");
         coutk << "#     BLOCK:   ACTUAL_KE:    KE_AVE:      ERROR:" << endl;
@@ -352,14 +358,17 @@ void System :: initialize_properties(){ // Initialize data members used for meas
         _measure_pressure = true;
         _index_pressure = index_property;
         index_property++;
-        _ptail = 0.0; // TO BE FIXED IN EXERCISE 7
+        _ptail = 32.*M_PI*_rho*(1./(3*pow(_r_cut,6))-0.5)/(3.*pow(_r_cut,3));
       } else if( property == "GOFR" ){
         ofstream coutgr("../OUTPUT/gofr.dat");
         coutgr << "# DISTANCE:     AVE_GOFR:        ERROR:" << endl;
         coutgr.close();
+        coutgr.open("../OUTPUT/gofr_blocks.dat");
+        coutgr << "# BLOCK:        DISTANCE:        ACTUAL_GOFR:" << endl;
+        coutgr.close();
         input>>_n_bins;
         _nprop+=_n_bins;
-        _bin_size = (_halfside.min() )/(double)_n_bins;
+        _bin_size = _halfside.min()/(double)_n_bins;
         _measure_gofr = true;
         _index_gofr = index_property;
         index_property+= _n_bins;
@@ -513,9 +522,11 @@ void System :: read_configuration(){
       _particle(i).setposition(0, this->pbc(_side(0)*x, 0));
       _particle(i).setposition(1, this->pbc(_side(1)*y, 1));
       _particle(i).setposition(2, this->pbc(_side(2)*z, 2));
-      //_particle(i).setposition(0, this->pbc(_halfside(0)*x, 0));
-      //_particle(i).setposition(1, this->pbc(_halfside(1)*y, 1));
-      //_particle(i).setposition(2, this->pbc(_halfside(2)*z, 2));
+
+      // Used in exercise 04.2 for the low entropic initial configuration that occupies half of the simulation box in each direction
+      /* _particle(i).setposition(0, this->pbc(_halfside(0)*x, 0));
+      _particle(i).setposition(1, this->pbc(_halfside(1)*y, 1));
+      _particle(i).setposition(2, this->pbc(_halfside(2)*z, 2)); */
       _particle(i).acceptmove(); // _x_old = _x_new
     }
   } else cerr << "PROBLEM: Unable to open INPUT file config.xyz"<< endl;
@@ -561,7 +572,8 @@ void System :: measure(){ // Measure properties
         distance(1) = this->pbc( _particle(i).getposition(1,true) - _particle(j).getposition(1,true), 1);
         distance(2) = this->pbc( _particle(i).getposition(2,true) - _particle(j).getposition(2,true), 2);
         dr = sqrt( dot(distance,distance) );
-        // GOFR ... TO BE FIXED IN EXERCISE 7
+        // GOFR
+        if (_measure_gofr && dr < _halfside.min()) _measurement(_index_gofr + static_cast<int>(dr/_bin_size)) += 2.;
         if(dr < _r_cut){
           if(_measure_penergy)  penergy_temp += 1.0/pow(dr,12) - 1.0/pow(dr,6); // POTENTIAL ENERGY
           if(_measure_pressure) virial       += 1.0/pow(dr,12) - 0.5/pow(dr,6); // PRESSURE
@@ -605,13 +617,20 @@ void System :: measure(){ // Measure properties
   // TEMPERATURE ///////////////////////////////////////////////////////////////
   if (_measure_temp and _measure_kenergy) _measurement(_index_temp) = (2.0/3.0) * kenergy_temp;
   // PRESSURE //////////////////////////////////////////////////////////////////
-  if (_measure_pressure) _measurement[_index_pressure] = _rho * (2.0/3.0) * kenergy_temp + (_ptail*_npart + 48.0*virial/3.0)/_volume;
+  if (_measure_pressure) {
+    if (_sim_type == 1) kenergy_temp = 1.5 * _temp;
+    _measurement(_index_pressure) = _rho * (2.0/3.0) * kenergy_temp + (_ptail*_npart + 48.0*virial/3.0)/_volume;
+  }
   // MAGNETIZATION /////////////////////////////////////////////////////////////
-// TO BE FIXED IN EXERCISE 6
+  if (_measure_magnet) {
+    for (auto particle : _particle) magnetization += static_cast<double>(particle.getspin());
+    magnetization /= double(_npart);
+    _measurement(_index_magnet) = magnetization;
+  } 
   // SPECIFIC HEAT /////////////////////////////////////////////////////////////
-// TO BE FIXED IN EXERCISE 6
+  if (_measure_cv && _measure_tenergy) _measurement(_index_cv) = tenergy_temp*tenergy_temp;
   // SUSCEPTIBILITY ////////////////////////////////////////////////////////////
-// TO BE FIXED IN EXERCISE 6
+  if (_measure_chi && _measure_magnet) _measurement(_index_chi) = _beta*magnetization*magnetization*static_cast<double>(_npart);
 
   _block_av += _measurement; //Update block accumulators
 
@@ -624,6 +643,13 @@ void System :: averages(int blk){
   double average, sum_average, sum_ave2;
 
   _average     = _block_av / double(_nsteps);
+  if (_measure_cv) _average(_index_cv) = pow(_beta, 2)*(_average(_index_cv) - pow(_average(_index_tenergy), 2))*static_cast<double>(_npart);
+  if (_measure_gofr) {
+    for (int i = 0; i < _n_bins; i++) {
+      double delta_V = 4.*M_PI*(pow((i+1)*_bin_size,3) - pow(i*_bin_size,3))/3.;
+      _average(_index_gofr+i) /= _rho*_npart*delta_V;
+    }
+  }
   _global_av  += _average;
   _global_av2 += _average % _average; // % -> element-wise multiplication
 
@@ -689,8 +715,30 @@ void System :: averages(int blk){
   }
   // GOFR //////////////////////////////////////////////////////////////////////
   // TO BE FIXED IN EXERCISE 7
+  if (_measure_gofr) {
+    coutf.open("../OUTPUT/gofr_blocks.dat",ios::app);
+    for (int i=0; i<_n_bins; i++) {
+      average  = _average(_index_gofr + i);
+      coutf << setw(12) << blk
+            << setw(12) << i*_bin_size
+            << setw(12) << average << endl;
+    }
+    coutf << endl;
+    coutf.close();
+
+    if (blk == _nblocks) {
+      coutf.open("../OUTPUT/gofr.dat",ios::app);
+      for (int i=0; i<_n_bins; i++) {
+        sum_average = _global_av(_index_gofr + i);
+        sum_ave2 = _global_av2(_index_gofr + i);
+        coutf << setw(12) << i*_bin_size
+              << setw(12) << sum_average/double(blk)
+              << setw(12) << this->error(sum_average, sum_ave2, blk) << endl;
+      }
+    }
+    coutf.close();
+  }
   // POFV //////////////////////////////////////////////////////////////////////
-  // TO BE FIXED IN EXERCISE 4
   if (_measure_pofv){
     coutf.open("../OUTPUT/pofv_blocks.dat",ios::app);
     for (int i=0; i<_n_bins_v; i++) {
@@ -716,11 +764,41 @@ void System :: averages(int blk){
     coutf.close();
   }
   // MAGNETIZATION /////////////////////////////////////////////////////////////
-  // TO BE FIXED IN EXERCISE 6
+  if (_measure_magnet) {
+    coutf.open("../OUTPUT/magnetization.dat", ios::app);
+    average  = _average(_index_magnet);
+    sum_average = _global_av(_index_magnet);
+    sum_ave2 = _global_av2(_index_magnet);
+    coutf << setw(15) << blk
+          << setw(15) << average
+          << setw(15) << sum_average/double(blk)
+          << setw(15) << this->error(sum_average, sum_ave2, blk) << endl;
+    coutf.close();
+  }
   // SPECIFIC HEAT /////////////////////////////////////////////////////////////
-  // TO BE FIXED IN EXERCISE 6
+  if (_measure_cv) {
+    coutf.open("../OUTPUT/specific_heat.dat", ios::app);
+    average  = _average(_index_cv);
+    sum_average = _global_av(_index_cv);
+    sum_ave2 = _global_av2(_index_cv);
+    coutf << setw(15) << blk
+          << setw(15) << average
+          << setw(15) << sum_average/double(blk)
+          << setw(15) << this->error(sum_average, sum_ave2, blk) << endl;
+    coutf.close();
+  }
   // SUSCEPTIBILITY ////////////////////////////////////////////////////////////
-  // TO BE FIXED IN EXERCISE 6
+  if (_measure_chi) {
+    coutf.open("../OUTPUT/susceptibility.dat", ios::app);
+    average  = _average(_index_chi);
+    sum_average = _global_av(_index_chi);
+    sum_ave2 = _global_av2(_index_chi);
+    coutf << setw(15) << blk
+          << setw(15) << average
+          << setw(15) << sum_average/double(blk)
+          << setw(15) << this->error(sum_average, sum_ave2, blk) << endl;
+    coutf.close();
+  }
   // ACCEPTANCE ////////////////////////////////////////////////////////////////
   double fraction;
   coutf.open("../OUTPUT/acceptance.dat",ios::app);

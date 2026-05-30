@@ -54,9 +54,6 @@ int main (int argc, char *argv[]){
     const int L = M/N;
     const int time_steps = 100;
     const double deltaT = T / static_cast<double>(time_steps);
-
-    //std::vector<double> call_prices(N), call_prices2(N);
-    //std::vector<double> put_prices(N), put_prices2(N);
     
     std::vector<double> call_prices_direct(N), call_prices2_direct(N);
     std::vector<double> put_prices_direct(N), put_prices2_direct(N);
@@ -64,6 +61,7 @@ int main (int argc, char *argv[]){
     std::vector<double> put_prices_discrete(N), put_prices2_discrete(N);
 
     for (int i = 0; i < N; i++) {
+        // Direct stock pricing
         double sum_C = 0.;
         double sum_P = 0.;
 
@@ -81,15 +79,16 @@ int main (int argc, char *argv[]){
         put_prices_direct[i] = sum_P / static_cast<double>(L);
         put_prices2_direct[i] = std::pow(put_prices_direct[i], 2);
 
-        // Discrete call prices
+        // Discrete stock pricing
         double sum_C_discrete = 0.;
         double sum_P_discrete = 0.;
     
         for (int j = 0; j < L; j++) {
             double S = S_0;
+            // Simulate 100 time steps to get the final price
             for (int k = 0; k < time_steps; k++) {
                 double Z = rnd.Gauss(0., 1.);
-                S = S*std::exp((r-std::pow(sigma,2)/2.)*deltaT + sigma*Z*std::sqrt(deltaT));
+                S *= std::exp((r-std::pow(sigma,2)/2.)*deltaT + sigma*Z*std::sqrt(deltaT));
             }
             sum_C_discrete += std::exp(-r*T)*std::max(0., S-K);
             sum_P_discrete += std::exp(-r*T)*std::max(0., K-S);
@@ -111,20 +110,10 @@ int main (int argc, char *argv[]){
     averages_from_blocks(call_prices_discrete, call_prices2_discrete, call_averages_discrete, call_errors_discrete);
     averages_from_blocks(put_prices_discrete, put_prices2_discrete, put_averages_discrete, put_errors_discrete);
 
-    write_data(call_averages_direct, call_errors_direct, "call_direct.out");
-    write_data(put_averages_direct, put_errors_direct, "put_direct.out");
-    write_data(call_averages_discrete, call_errors_discrete, "call_discrete.out");
-    write_data(put_averages_discrete, put_errors_discrete, "put_discrete.out");
-
-    /*std::ofstream outfile;
-
-    outfile.open("importance.out");
-    if (outfile.is_open()) {
-        for (int i = 0; i < N; i++) {
-            outfile << N*i << " " << cumsum_importance[i] << " " << errors_importance[i] << std::endl;
-        }
-    } else std::cerr << "Error: unable to write importance.out" << std::endl;
-    outfile.close();*/
+    write_data(call_averages_direct, call_errors_direct, "OUTPUT/call_direct.out");
+    write_data(put_averages_direct, put_errors_direct, "OUTPUT/put_direct.out");
+    write_data(call_averages_discrete, call_errors_discrete, "OUTPUT/call_discrete.out");
+    write_data(put_averages_discrete, put_errors_discrete, "OUTPUT/put_discrete.out");
 
    return 0;
 }

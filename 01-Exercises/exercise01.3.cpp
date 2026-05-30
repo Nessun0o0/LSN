@@ -89,7 +89,7 @@ int main (int argc, char *argv[]){
 
     // Write results to file
     std::ofstream out;
-    out.open("pi.out");
+    out.open("OUTPUT/pi.out");
     if (out.is_open()) {
         for (int i = 0; i < N; i++) {
             out << cumsum_pi[i] << " " << errors_pi[i] << std::endl;

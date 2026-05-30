@@ -73,7 +73,7 @@ int main (int argc, char *argv[]){
 
         // Write results to file
         std::ofstream out;
-        std::string filename = std::to_string(n) + ".out";
+        std::string filename = "OUTPUT/" + std::to_string(n) + ".out";
         out.open(filename);
         if(out.is_open()) {
             for (int i = 0; i < M; i++) {
