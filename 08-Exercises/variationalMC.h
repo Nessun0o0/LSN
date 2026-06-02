@@ -41,8 +41,10 @@ class SimulatedAnnealing {
         void reset_acceptance() {_n_accepted = 0, _n_tries = 0;};
 
         double get_acceptance() {return static_cast<double>(_n_accepted)/_n_tries;};
+        double get_H_acceptance() {return _var_H.get_acceptance();};
         double get_mu() {return _mu;};
         double get_sigma() {return _sigma;};
+        double get_delta() {return _delta;};
         double get_tries() {return _n_tries;};
         double get_H() {return _current_H;};
     private:

@@ -252,19 +252,19 @@ void System :: initialize_velocities(){
     vx.zeros();
     vy.zeros();
     vz.zeros();
-    double v_star = sqrt(3.0 * _temp);
+    double v_star = sqrt(3.0 * _temp); // Used for Dirac delta velocity ditribution
     for (int i=0; i<_npart; i++){
       vx(i) = _rnd.Gauss(0.,sqrt(_temp));
       vy(i) = _rnd.Gauss(0.,sqrt(_temp));
       vz(i) = _rnd.Gauss(0.,sqrt(_temp));
       // Used in exercise 04.2 for the low entropic initial configuration that has a Dirac delta as the initial velocity distribution
-      /*
-      int direction = static_cast<int>(_rnd.Rannyu(0.,3.));
+      
+      /* int direction = static_cast<int>(_rnd.Rannyu(0.,3.));
       int sign = 1-2*static_cast<int>(_rnd.Rannyu(0.,2.));
       if (direction == 0) vx(i) = sign*v_star;
       else if (direction == 1) vy(i) = sign*v_star;
-      else vz(i) = sign*v_star; 
-      */
+      else vz(i) = sign*v_star;  */
+     
       
       sumv(0) += vx(i);
       sumv(1) += vy(i);
@@ -325,7 +325,7 @@ void System :: initialize_properties(){ // Initialize data members used for meas
         _index_penergy = index_property;
         _measure_penergy = true;
         index_property++;
-        _vtail = 8*M_PI*_rho*(1./3.*pow(_r_cut,6)-1)/(3.*pow(_r_cut,3));
+        _vtail = 8*M_PI*_rho*(1./(3.*pow(_r_cut,6))-1)/(3.*pow(_r_cut,3));
       } else if( property == "KINETIC_ENERGY" ){
         ofstream coutk("../OUTPUT/kinetic_energy.dat");
         coutk << "#     BLOCK:   ACTUAL_KE:    KE_AVE:      ERROR:" << endl;
@@ -385,7 +385,7 @@ void System :: initialize_properties(){ // Initialize data members used for meas
         coutpv.close();
         input>>_n_bins_v;
         _nprop += _n_bins_v;
-        _bin_size_v = 4.0*_temp/(double)_n_bins_v; // TO BE FIXED IN EXERCISE 4
+        _bin_size_v = 4.0*_temp/(double)_n_bins_v;
         _measure_pofv = true;
         _index_pofv = index_property;
         index_property += _n_bins_v;
@@ -581,7 +581,7 @@ void System :: measure(){ // Measure properties
       }
     }
   }
-  // POFV ... TO BE FIXED IN EXERCISE 4
+  // POFV
   if (_measure_pofv) {
     for (int i=0; i<_npart; i++) {
       double velocity_temp = sqrt( dot(_particle(i).getvelocity() , _particle(i).getvelocity()));

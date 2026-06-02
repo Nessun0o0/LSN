@@ -20,4 +20,4 @@ random.o : random.cpp random.h
 clean :
 	rm *.o exercise01.*.exe
 remove :
-	rm *.out
+	rm OUTPUT/*.out

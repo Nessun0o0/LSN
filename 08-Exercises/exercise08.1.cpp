@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 
     cout << H_var.get_acceptance() << endl;
 
-    ofstream output("output_1.out");
+    ofstream output("OUTPUT/output_1.out");
     if (output.is_open()) {
         output << "# BLOCK\tENERGY\tERROR\n";
         for (int i = 0; i < N; i++) {

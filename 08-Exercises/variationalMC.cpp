@@ -33,6 +33,9 @@ double ExpectationEnergy :: get_acceptance() {
 }
 
 double ExpectationEnergy :: compute_energy(int n_steps) {
+    // Thermalization: finds the region where the new wave function is relevant
+    for (int i = 0; i < 500; i++) this->metro();
+
     _n_accepted = 0;
     _n_tries = 0;
     double sum_H = 0.;
@@ -58,15 +61,18 @@ SimulatedAnnealing :: SimulatedAnnealing(double mu, double sigma, double T, doub
 }
 
 void SimulatedAnnealing :: metro() {
-    double mu_new = _rnd->Rannyu(-1.,1.)*_delta + _mu;
-    double sigma_new = _rnd->Rannyu(-1.,1.)*_delta + _sigma;
-    if (mu_new < 0. || sigma_new < 0.) {
+    double mu_new = _mu;
+    double sigma_new = _sigma;
+    if (_rnd->Rannyu() < 0.5) mu_new += _rnd->Rannyu(-1.,1.)*_delta;
+    else sigma_new += _rnd->Rannyu(-1.,1.)*_delta;
+
+    if (mu_new < 0. || sigma_new <= 0.1) {
         _n_tries++;
         return;
     }
     _var_H.set_mu(mu_new);
     _var_H.set_sigma(sigma_new);
-    _var_H.set_delta(4*sigma_new);
+    _var_H.set_delta(2.*sigma_new);
     double H_new = _var_H.compute_energy(_compute_H_steps);
 
     double acceptance = exp(_beta * (_current_H - H_new));

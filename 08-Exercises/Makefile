@@ -15,4 +15,6 @@ random.o : random.cpp random.h
 variationalMC.o : variationalMC.cpp variationalMC.h
 	$(CC) -c $< -o $@ $(CFLAGS)
 clean :
-	rm *.o *.exe *.out
+	rm *.o *.exe
+remove :
+	rm OUTPUT/*.out
