@@ -11,6 +11,7 @@ _/    _/  _/_/_/  _/_/_/_/ email: Davide.Galli@unimi.it
 #ifndef __Random__
 #define __Random__
 
+#include <string>
 // This class contains functions for generating random numbers using the RANNYU algorithm
 class Random {
 

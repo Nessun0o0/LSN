@@ -61,8 +61,8 @@ SimulatedAnnealing :: SimulatedAnnealing(double mu, double sigma, double T, doub
 }
 
 void SimulatedAnnealing :: metro() {
-    double mu_new = _mu;
-    double sigma_new = _sigma;
+    double mu_new = _mu;// +  _rnd->Rannyu(-1.,1.)*_delta;
+    double sigma_new = _sigma;// +  _rnd->Rannyu(-1.,1.)*_delta;
     if (_rnd->Rannyu() < 0.5) mu_new += _rnd->Rannyu(-1.,1.)*_delta;
     else sigma_new += _rnd->Rannyu(-1.,1.)*_delta;
 
@@ -72,7 +72,7 @@ void SimulatedAnnealing :: metro() {
     }
     _var_H.set_mu(mu_new);
     _var_H.set_sigma(sigma_new);
-    _var_H.set_delta(2.*sigma_new);
+    _var_H.set_delta(2.5*sigma_new);
     double H_new = _var_H.compute_energy(_compute_H_steps);
 
     double acceptance = exp(_beta * (_current_H - H_new));

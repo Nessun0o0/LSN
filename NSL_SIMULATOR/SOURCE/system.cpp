@@ -252,13 +252,13 @@ void System :: initialize_velocities(){
     vx.zeros();
     vy.zeros();
     vz.zeros();
-    double v_star = sqrt(3.0 * _temp); // Used for Dirac delta velocity ditribution
+    //double v_star = sqrt(3.0 * _temp); // Used for Dirac delta velocity ditribution
     for (int i=0; i<_npart; i++){
       vx(i) = _rnd.Gauss(0.,sqrt(_temp));
       vy(i) = _rnd.Gauss(0.,sqrt(_temp));
       vz(i) = _rnd.Gauss(0.,sqrt(_temp));
+
       // Used in exercise 04.2 for the low entropic initial configuration that has a Dirac delta as the initial velocity distribution
-      
       /* int direction = static_cast<int>(_rnd.Rannyu(0.,3.));
       int sign = 1-2*static_cast<int>(_rnd.Rannyu(0.,2.));
       if (direction == 0) vx(i) = sign*v_star;

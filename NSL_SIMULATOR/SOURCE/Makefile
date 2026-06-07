@@ -12,8 +12,12 @@ particle.o : particle.cpp particle.h
 	$(CC) -c particle.cpp -o particle.o $(CFLAGS)
 random.o : random.cpp random.h
 	$(CC) -c random.cpp -o random.o $(CFLAGS)
+low_entropy : NSL_SIMULATOR.o particle.o random.o system_low_entropy.o
+	$(CC) NSL_SIMULATOR.o particle.o random.o system_low_entropy.o -o simulator_low_entropy.exe $(AFLAGS)
+system_low_entropy.o : system_low_entropy.cpp system.h
+	$(CC) -c system_low_entropy.cpp -o system_low_entropy.o $(CFLAGS)
 clean :
-	rm *.o simulator.exe
+	rm -f *.o *.exe
 remove:
 	rm ../OUTPUT/*.*
 	rm ../OUTPUT/CONFIG/*.*

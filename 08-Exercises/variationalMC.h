@@ -37,6 +37,7 @@ class SimulatedAnnealing {
         void set_temp(double temp) {_temp = temp; _beta = 1./temp;};
         void set_delta_H(double delta) {_var_H.set_delta(delta);};
         void set_delta_SA(double delta) {_delta = delta;};
+        void set_compute_H_steps(int H_steps) {_compute_H_steps = H_steps;};
         void metro();
         void reset_acceptance() {_n_accepted = 0, _n_tries = 0;};
 

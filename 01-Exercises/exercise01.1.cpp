@@ -48,7 +48,7 @@ int main (int argc, char *argv[]){
         exit(-1);
     }
 
-// Part 1
+    // Part 1
 
     double M = 10000;
     double N = 100;
@@ -107,15 +107,15 @@ int main (int argc, char *argv[]){
    cumsum_variances = Cumsum(variances);
    cumsum_variances2 = Cumsum(variances2);
 
-   for (int i = 0; i < N; i++) {
-    cumsum_variances[i] /= static_cast<double>(i + 1);
-    cumsum_variances2[i] /= static_cast<double>(i + 1);
-    if (i == 0) {
-        errors_variances[i] = 0.;
-        continue;
+    for (int i = 0; i < N; i++) {
+        cumsum_variances[i] /= static_cast<double>(i + 1);
+        cumsum_variances2[i] /= static_cast<double>(i + 1);
+        if (i == 0) {
+            errors_variances[i] = 0.;
+            continue;
+        }
+        errors_variances[i] = sqrt((cumsum_variances2[i] - pow(cumsum_variances[i], 2)) / static_cast<double>(i));
     }
-    errors_variances[i] = sqrt((cumsum_variances2[i] - pow(cumsum_variances[i], 2)) / static_cast<double>(i));
-   }
 
    // Write results to file
    out.open("OUTPUT/variances.out");
@@ -129,12 +129,13 @@ int main (int argc, char *argv[]){
    // Part 3
    M = 100;
    N = 10000;
-   int n = 10000;
+   int n = 10000; // Number of random numbers generated for each chi^2 evaluation
    double expected = static_cast<double>(n) / static_cast<double>(M);
    vector<double> chi2(N);
 
     for (int i = 0; i < N; i++) {
         vector<int> counts(M, 0);
+        // Add one to the bin that contains the generated number. Repeat n times
         for (int j = 0; j < n; j++) counts[static_cast<int>(rnd.Rannyu(0., M))]++;
 
         double sum = 0.;

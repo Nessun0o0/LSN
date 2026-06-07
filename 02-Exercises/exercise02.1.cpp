@@ -5,6 +5,7 @@
 #include <cmath>
 #include "random.h"
 
+// Computes the cumulative sum of a vector
 std::vector<double> Cumsum(const std::vector<double>& vec) {
     std::vector<double> cumsum_vec(vec.size());
 
@@ -16,6 +17,7 @@ std::vector<double> Cumsum(const std::vector<double>& vec) {
     return cumsum_vec;
 }
 
+// The function to be integrated
 double f(double x) {
     return std::cos(M_PI*x/2.)*M_PI/2.;
 }
@@ -41,6 +43,7 @@ int main (int argc, char *argv[]){
         uniform2[i] = uniform[i] * uniform[i];
     }
 
+    // Compute cumulative averages and errors with data blocking
     cumsum_uniform = Cumsum(uniform);
     cumsum_uniform2 = Cumsum(uniform2);
 
@@ -61,13 +64,14 @@ int main (int argc, char *argv[]){
     for (int i = 0; i < N; i++) {
         double sum = 0.;
         for (int j = 0; j < L; j++) {
-            double x = 1-std::sqrt(1.-rnd.Rannyu());
+            double x = 1-std::sqrt(1.-rnd.Rannyu()); // Generates x from probability distribution given by the Taylor series
             sum += std::cos(M_PI*x/2.)*M_PI/4./(1.-x);
         }
         importance[i] = sum / static_cast<double>(L);
         importance2[i] = importance[i] * importance[i];
     }
 
+    // Compute cumulative averages and errors with data blocking
     cumsum_importance = Cumsum(importance);
     cumsum_importance2 = Cumsum(importance2);
 
@@ -82,7 +86,7 @@ int main (int argc, char *argv[]){
     }
 
     std::ofstream outfile;
-
+    // Write results to file
     outfile.open("OUTPUT/uniform.out");
     if (outfile.is_open()) {
         for (int i = 0; i < N; i++) {

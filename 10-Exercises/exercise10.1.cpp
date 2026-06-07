@@ -22,26 +22,26 @@ int main(int argc, char *argv[]) {
     rnd.SetSeedFromFile("seed.in", "Primes", rank);
     
     int n_cities, n_individuals, n_generations;
-    double d_temp;
+    double t_max, t_min;
     
     ifstream input("input.dat");
     if (input.is_open()) {
-        input >> n_cities >> n_individuals >> n_generations >> d_temp;
+        input >> n_cities >> n_individuals >> n_generations >> t_max >> t_min;
     } else {
         cerr << "ERROR: can't open input.dat" << endl;
         exit(-1);
     }
     input.close();
+    //double d_beta = (1./t_min - 1./t_max) / (size-1);
 
     vector<vector<double>> city_coordinates(n_cities, vector<double>(2, 0.));
 
     if (rank == 0) {
+        // Loads all the city coordinates into an array, then sends it to all the other ranks
         input.open("cap_prov_ita.dat");
         if (input.is_open()) {
             for (int i = 0; i < n_cities; i++) {
-                //input >> x >> y;
                 input >> city_coordinates[i][0] >> city_coordinates[i][1];
-                //city_coordinates[i] = vector<double>{x,y};
             }
         } else {
             cerr << "ERROR: can't open cap_prov_ita.dat" << endl;
@@ -52,7 +52,11 @@ int main(int argc, char *argv[]) {
 
     try {
 
-        Population pop(n_individuals, n_cities, city_coordinates, rank*d_temp+0.1, &rnd);
+        double r = pow(t_max / t_min, 1/static_cast<double>(size-1));
+        Population pop(n_individuals, n_cities, city_coordinates, t_min*pow(r, rank), &rnd);
+        //Population pop(n_individuals, n_cities, city_coordinates, 1.0 / (1./t_min - rank * d_beta), &rnd);
+        //Population pop(n_individuals, n_cities, city_coordinates, 0.1+rank*d_temp, &rnd);
+        int n_acc = 0;
 
         for (int i = 0; i < n_generations; i++) {
             pop.metropolis_move();
@@ -64,11 +68,22 @@ int main(int argc, char *argv[]) {
                 MPI_Recv(&next_chromosome[0], n_cities, MPI_INT, rank+1, rank, MPI_COMM_WORLD, &status);
                 Individual next_individual(next_chromosome);
                 next_individual.compute_fitness(city_coordinates);
-                double next_beta = 1./(0.1+d_temp*(rank+1)); // TEMPORANEO
+                //double next_beta = 1./(0.1+d_temp*(rank+1)); // TEMPORANEO
+                double next_beta = 1./(t_min*pow(r, rank+1));
+                //double next_beta = pop.get_beta() - d_beta;
                 double acceptance = exp(-(pop.get_beta() - next_beta)*(next_individual.get_fitness() - pop.get_population()[0].get_fitness()));
+
+                /* double denominator = 1e-3 * pow(r, rank+1);
+    double next_beta_calc = 1. / denominator;
+    cout << "rank " << rank << " pow(r,rank+1)=" << pow(r, rank+1) 
+         << " denominator=" << denominator 
+         << " next_beta=" << next_beta_calc << endl; */
+
+
                 if (rnd.Rannyu() < acceptance) exchange = true;
                 MPI_Send(&exchange, 1, MPI_CXX_BOOL, rank+1, rank+1, MPI_COMM_WORLD);
                 if (exchange) {
+                    n_acc++;
                     MPI_Send(&pop.get_population()[0].get_chromosome()[0], n_cities, MPI_INT, rank+1, rank+1, MPI_COMM_WORLD);
                     //cout << "Exchange between " << rank << " and " << rank+1 << " with acceptance " << acceptance << endl;
                     pop.get_population()[0].set_chromosome(next_chromosome);
@@ -83,8 +98,11 @@ int main(int argc, char *argv[]) {
                     pop.get_population()[0].set_chromosome(exchange_chromosome);
                 }
             }
-
+            
         }
+        double acc = static_cast<double>(n_acc) / n_generations;
+        double* acceptations = new double[size];
+        MPI_Gather(&acc, 1, MPI_DOUBLE, acceptations, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
         if (rank == 0) {
             Individual elite = pop.get_elite();
@@ -97,7 +115,12 @@ int main(int argc, char *argv[]) {
                 }
             }
             cout << elite.get_fitness() << endl;
+
+            for (int i = 0; i < size; i++) cout << acceptations[i] << " ";
+            cout << endl;
+
         }
+        delete[] acceptations;
 
     } catch (const exception& err) {
         cerr << err.what() << endl;
