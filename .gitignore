@@ -1,6 +1,4 @@
-build/
 .ipynb_checkpoints/
 .venv
-*.out
 *.o
 *.exe

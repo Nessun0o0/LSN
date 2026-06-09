@@ -16,11 +16,12 @@ class Individual {
         void pair_permutation(int a, int b);
         void gene_shift(int shift_length, int n_contiguous_genes, int start);
         void multiple_permutation(int start, int end, int shift_length);
-        void inversion(int m);
+        void inversion(int start, int length);
+
+        void set_chromosome(vector<int> chromosome) {_chromosome = chromosome; _n_genes = chromosome.size();};
 
         const vector<int>& get_chromosome() const {return _chromosome;};
         double get_fitness() const {return _fitness;};
-        void set_chromosome(vector<int> chromosome) {_chromosome = chromosome; _n_genes = chromosome.size();};
 
         bool check_constraints();
 

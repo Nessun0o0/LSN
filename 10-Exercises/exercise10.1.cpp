@@ -2,6 +2,7 @@
 #include <cmath>
 #include <vector>
 #include <fstream>
+#include <iomanip>
 #include "mpi.h"
 
 #include "random.h"
@@ -17,22 +18,23 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    
+    // Each rank initializes the RNG with a different seed
     Random rnd;
     rnd.SetSeedFromFile("seed.in", "Primes", rank);
     
-    int n_cities, n_individuals, n_generations;
+    int n_cities, n_individuals, n_generations, n_data;
     double t_max, t_min;
     
     ifstream input("input.dat");
     if (input.is_open()) {
-        input >> n_cities >> n_individuals >> n_generations >> t_max >> t_min;
+        char tmp[512];
+        for (int i = 0; i < 7; i++) input >> tmp;
+        input >> n_cities >> n_individuals >> n_generations >> t_max >> t_min >> n_data;
     } else {
         cerr << "ERROR: can't open input.dat" << endl;
         exit(-1);
     }
     input.close();
-    //double d_beta = (1./t_min - 1./t_max) / (size-1);
 
     vector<vector<double>> city_coordinates(n_cities, vector<double>(2, 0.));
 
@@ -52,75 +54,107 @@ int main(int argc, char *argv[]) {
 
     try {
 
+        int n_swap = 10; // Number of steps between each swap move
         double r = pow(t_max / t_min, 1/static_cast<double>(size-1));
         Population pop(n_individuals, n_cities, city_coordinates, t_min*pow(r, rank), &rnd);
-        //Population pop(n_individuals, n_cities, city_coordinates, 1.0 / (1./t_min - rank * d_beta), &rnd);
-        //Population pop(n_individuals, n_cities, city_coordinates, 0.1+rank*d_temp, &rnd);
-        int n_acc = 0;
+
+        int n_acc = 0; // To compute the acceptance rate of the swap
+        vector<double> lengths;
+        int n_save = n_generations/n_data;
+        if (rank == 0) lengths.resize(n_data);
+
+        vector<MPI_Status> status(size-1);
 
         for (int i = 0; i < n_generations; i++) {
             pop.metropolis_move();
-            MPI_Status status;
+            if (rank == 0 && i%n_save == 0) lengths[i/n_save] = pop.get_elite().get_fitness();
+            if (i%n_swap != 0 || i == 0) continue;
+
+            // Chromosome exchange move
+            MPI_Request reqs[3];
             bool exchange = false;
             vector<int> next_chromosome(n_cities);
-            if (rank != 0) MPI_Send(&pop.get_population()[0].get_chromosome()[0], n_cities, MPI_INT, rank-1, rank-1, MPI_COMM_WORLD);
+            vector<int> current_chromosome = pop.get_population()[0].get_chromosome();
+            double current_fitness = pop.get_population()[0].get_fitness();
+
+            // Send the current chromosome to the next cooler temperature 
+            if (rank != 0) MPI_Isend(&current_chromosome[0], n_cities, MPI_INT, rank-1, rank-1, MPI_COMM_WORLD, &reqs[0]);
+            
+            // Receive the chromosome from the next hotter temperature and try an exchange move
             if (rank != size-1) {
-                MPI_Recv(&next_chromosome[0], n_cities, MPI_INT, rank+1, rank, MPI_COMM_WORLD, &status);
+                MPI_Recv(&next_chromosome[0], n_cities, MPI_INT, rank+1, rank, MPI_COMM_WORLD, &status[rank]);
                 Individual next_individual(next_chromosome);
                 next_individual.compute_fitness(city_coordinates);
-                //double next_beta = 1./(0.1+d_temp*(rank+1)); // TEMPORANEO
+
                 double next_beta = 1./(t_min*pow(r, rank+1));
-                //double next_beta = pop.get_beta() - d_beta;
-                double acceptance = exp(-(pop.get_beta() - next_beta)*(next_individual.get_fitness() - pop.get_population()[0].get_fitness()));
-
-                /* double denominator = 1e-3 * pow(r, rank+1);
-    double next_beta_calc = 1. / denominator;
-    cout << "rank " << rank << " pow(r,rank+1)=" << pow(r, rank+1) 
-         << " denominator=" << denominator 
-         << " next_beta=" << next_beta_calc << endl; */
-
+                double acceptance = exp(-(pop.get_beta() - next_beta)*(next_individual.get_fitness() - current_fitness));
 
                 if (rnd.Rannyu() < acceptance) exchange = true;
-                MPI_Send(&exchange, 1, MPI_CXX_BOOL, rank+1, rank+1, MPI_COMM_WORLD);
+                // Send the signal to the hotter temperature that the exchange was accepted
+                MPI_Isend(&exchange, 1, MPI_CXX_BOOL, rank+1, rank+1, MPI_COMM_WORLD, &reqs[1]);
                 if (exchange) {
                     n_acc++;
-                    MPI_Send(&pop.get_population()[0].get_chromosome()[0], n_cities, MPI_INT, rank+1, rank+1, MPI_COMM_WORLD);
-                    //cout << "Exchange between " << rank << " and " << rank+1 << " with acceptance " << acceptance << endl;
+                    // Send the current chromosome to the hotter temperature
+                    MPI_Isend(&current_chromosome[0], n_cities, MPI_INT, rank+1, rank+1, MPI_COMM_WORLD, &reqs[2]);
                     pop.get_population()[0].set_chromosome(next_chromosome);
                 }
             }
             if (rank != 0) {
+                
+                // Receive the exchange signal from the cooler temperature
                 bool exchange_signal;
-                MPI_Recv(&exchange_signal, 1, MPI_CXX_BOOL, rank-1, rank, MPI_COMM_WORLD, &status);
+                MPI_Recv(&exchange_signal, 1, MPI_CXX_BOOL, rank-1, rank, MPI_COMM_WORLD, &status[rank-1]);
+                
                 if (exchange_signal) {
+                    // Swap the current chromosome
                     vector<int> exchange_chromosome(n_cities);
-                    MPI_Recv(&exchange_chromosome[0], n_cities, MPI_INT, rank-1, rank, MPI_COMM_WORLD, &status);
+                    MPI_Recv(&exchange_chromosome[0], n_cities, MPI_INT, rank-1, rank, MPI_COMM_WORLD, &status[rank-1]);
                     pop.get_population()[0].set_chromosome(exchange_chromosome);
                 }
+                
+                MPI_Wait(&reqs[0], &status[rank-1]);
+            }
+
+            if (rank != size-1) {
+                MPI_Wait(&reqs[1], &status[rank]);
+                if (exchange) MPI_Wait(&reqs[2], &status[rank]);
             }
             
         }
-        double acc = static_cast<double>(n_acc) / n_generations;
-        double* acceptations = new double[size];
-        MPI_Gather(&acc, 1, MPI_DOUBLE, acceptations, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
+        // Calculate acceptance rate
+        double acc = (static_cast<double>(n_acc) * n_swap) / n_generations;
+        double* acceptances = new double[size];
+        MPI_Gather(&acc, 1, MPI_DOUBLE, acceptances, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+        // Output optimal solution
         if (rank == 0) {
             Individual elite = pop.get_elite();
+            lengths.push_back(elite.get_fitness());
 
-            ofstream output("output.out");
+            ofstream output("OUTPUT/best_PT.out");
             if (output.is_open()) {
+                output << "#   CITIES\n";
                 for (int j = 0; j < n_cities; j++) {
-
-                    output << elite.get_chromosome()[j] << "\n";      
+                    output << setw(10) << elite.get_chromosome()[j] << "\n";      
                 }
-            }
-            cout << elite.get_fitness() << endl;
+            } else cerr << "ERROR: Cannot open OUTPUT/best_PT.out\n";
+            output.close();
 
-            for (int i = 0; i < size; i++) cout << acceptations[i] << " ";
-            cout << endl;
+            output.open("OUTPUT/history_PT.out");
+            if (output.is_open()) {
+                output << "#     STEP   BEST_LENGTH\n";
+                for (int j = 0; j <= n_data; j++) {
+                    output << setw(10) << j * n_save + 1 << setw(14) << lengths[j] << "\n";      
+                }
+            } else cerr << "ERROR: Cannot open OUTPUT/history_PT.out\n";
+            output.close();
+            
+            
+            cout << "Optimal solution length: " << elite.get_fitness() << endl;
 
         }
-        delete[] acceptations;
+        delete[] acceptances;
 
     } catch (const exception& err) {
         cerr << err.what() << endl;

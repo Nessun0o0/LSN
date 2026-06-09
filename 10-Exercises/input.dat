@@ -1,1 +1,2 @@
-110 1 10000000 10 0.005
+# N_CITIES   N_INDIVIDUALS   N_GENERATIONS   MAX_TEMP   MIN_TEMP   DATA_POINTS
+       110               1        10000000          3      0.005          1000

@@ -10,7 +10,7 @@ Population :: Population (double n_individuals, int n_cities, const vector<vecto
     _beta = 1./temperature;
     _n_accepted = 0;
     _n_moves = 0;
-    _mutation_probs = {0.1,0.1,0.1,0.1};
+    _mutation_probs = {0.1,0.1,0.1,0.1}; // [pair permutation, gene shift, multiple permutation, inversion]
     _crossover_prob = 0.7;
     _selection_exponent = 2;
     this->set_starting_population();
@@ -19,11 +19,14 @@ Population :: Population (double n_individuals, int n_cities, const vector<vecto
     _elite = _population[0];
 }
 
+// Generates a random starting population
 void Population :: set_starting_population() {
     vector<int> ordered_cities(_n_cities);
+    // Generate vector containing all the cities
     for (int i = 0; i < _n_cities; i++) {
         ordered_cities[i] = i+1;
     }
+    // Shuffle the chromosome of every individual
     _population = vector<Individual>(_n_individuals, ordered_cities);
     for (int i = 0; i < _n_individuals; i++) {
         for (int j = 1; j < _n_cities; j++) {
@@ -33,12 +36,14 @@ void Population :: set_starting_population() {
     }
 }
 
+// Checks whether all the population satisfies the constrains
 void Population :: check_population_constraints() {
     for (int i = 0; i < _n_individuals; i++) {
         if (!_population[i].check_constraints()) throw std::runtime_error("One individual doesn't fulfill the bonds"); 
     }
 }
 
+// Sorts the population in order of increasing fitness
 void Population :: order_fitness() {
     for (int i = 0; i < _n_individuals; i++) {
         _population[i].compute_fitness(_city_coordinates);
@@ -46,6 +51,7 @@ void Population :: order_fitness() {
     sort(_population.begin(), _population.end(), [](Individual a, Individual b) {return a.get_fitness() < b.get_fitness();});
 }
 
+// Select a new generation of individuals
 vector<Individual> Population :: selection() {
     vector<Individual> new_population(_n_individuals);
 
@@ -55,8 +61,13 @@ vector<Individual> Population :: selection() {
             new_population[i] = _population[j];
             continue;
         }
-        int k = static_cast<int>(_n_individuals*pow(_rnd->Rannyu(), _selection_exponent));
+        // select a different individual and the cutoff gene with which to execute crossover
+        int k;
+        do {
+            k = static_cast<int>(_n_individuals*pow(_rnd->Rannyu(), _selection_exponent));
+        } while (j == k);
         int cutoff = static_cast<int>(_rnd->Rannyu()*(_n_cities-3))+2;
+        // Apply crossover on both individuals
         new_population[i] = this->crossover(_population[j], _population[k], cutoff);
         new_population[i+1] = this->crossover(_population[k], _population[j], cutoff);
         i++;
@@ -68,6 +79,7 @@ vector<Individual> Population :: selection() {
 void Population :: evolve_population() {
     vector<Individual> new_population = this->selection();
 
+    // Cycles over all the population and applies mutations with the probabilities in _mutation_probs
     for (Individual& individual : new_population) {
         if (_rnd->Rannyu() < _mutation_probs[0]) {
             int a = static_cast<int>(_rnd->Rannyu()*(_n_cities-1))+1;
@@ -75,32 +87,37 @@ void Population :: evolve_population() {
             individual.pair_permutation(a, b);
         }
         if (_rnd->Rannyu() < _mutation_probs[1]) {
-            int m = static_cast<int>(_rnd->Rannyu()*(_n_cities-2))+1;
-            int n = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-m))+1;
-            int start = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-m-n))+1;
-            individual.gene_shift(n, m, start);
+            int contiguous_genes = static_cast<int>(_rnd->Rannyu()*(_n_cities-2))+1;
+            int shift_length = static_cast<int>(_rnd->Rannyu()*(_n_cities - 2 - contiguous_genes))+1;
+            int start = static_cast<int>(_rnd->Rannyu()*(_n_cities-1))+1;
+            individual.gene_shift(shift_length, contiguous_genes, start);
         }
         if (_rnd->Rannyu() < _mutation_probs[2]) {
             int n = static_cast<int>(_rnd->Rannyu()*((_n_cities-1)/2))+1;
-            int start = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-n))+1;
-            int end = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-n-start))+1;
+            int start = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-2*n))+1;
+            int end = start + n + static_cast<int>(_rnd->Rannyu()*(_n_cities-2*n-start+1));
             individual.multiple_permutation(start, end, n);
         }
         if (_rnd->Rannyu() < _mutation_probs[3]) {
-            int m = static_cast<int>(_rnd->Rannyu()*(_n_cities-2))+2;
-            individual.inversion(m);
+            int length = static_cast<int>(_rnd->Rannyu() * (_n_cities - 2)) + 2;
+            int start = static_cast<int>(_rnd->Rannyu() * (_n_cities - length)) + 1;
+            individual.inversion(start, length);
         }
     }
 
     _population = new_population;
     this->check_population_constraints();
     this->order_fitness();
+    // If there is a new best solution save the best individual
     if (_population[0].get_fitness() < _elite.get_fitness()) _elite = _population[0];
 }
 
+// Returns the child of the crossover between two individuals
 Individual Population :: crossover(const Individual& mother, const Individual& father, int cut) {
     Individual child = mother;
     int substituted = 0;
+
+    // Reorders the child's tail (after the cut) by placing remaining cities in the exact sequence they appear in the father.
     for (int i = 0; i < _n_cities; i++) {
         int city = father.get_chromosome()[i];
         for (int j = cut+substituted; j < _n_cities; j++) {
@@ -115,6 +132,8 @@ Individual Population :: crossover(const Individual& mother, const Individual& f
     return child;
 }
 
+// Use the genetic mutations as metropolis moves
+// Execute one random mutation and then accept or reject the move
 void Population :: metropolis_move() {
     Individual child = _population[0];
 
@@ -125,27 +144,28 @@ void Population :: metropolis_move() {
         child.pair_permutation(a, b);
     }
     else if (mutation_type == 1) {
-        int m = static_cast<int>(_rnd->Rannyu()*(_n_cities-2))+1;
-        int n = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-m))+1;
-        int start = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-m-n))+1;
-        child.gene_shift(n, m, start);
+        int contiguous_genes = static_cast<int>(_rnd->Rannyu()*(_n_cities-2))+1;
+        int shift_length = static_cast<int>(_rnd->Rannyu()*(_n_cities - 2 - contiguous_genes))+1;
+        int start = static_cast<int>(_rnd->Rannyu()*(_n_cities-1))+1;
+        child.gene_shift(shift_length, contiguous_genes, start);
     }
     else if (mutation_type == 2) {
         int n = static_cast<int>(_rnd->Rannyu()*((_n_cities-1)/2))+1;
-        int start = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-n))+1;
-        int end = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-n-start))+1;
+        int start = static_cast<int>(_rnd->Rannyu()*(_n_cities-1-2*n))+1;
+        int end = start + n + static_cast<int>(_rnd->Rannyu()*(_n_cities-2*n-start+1));
         child.multiple_permutation(start, end, n);
     }
     if (mutation_type == 3) {
-        int m = static_cast<int>(_rnd->Rannyu()*(_n_cities-2))+2;
-        child.inversion(m);
+        int length = static_cast<int>(_rnd->Rannyu() * (_n_cities - 2)) + 2;
+        int start = static_cast<int>(_rnd->Rannyu() * (_n_cities - length)) + 1;
+        child.inversion(start, length);
     }
 
-    this->check_population_constraints();
     child.compute_fitness(_city_coordinates);
-
+    
+    // Accept or reject the metropolis move
     double acceptance = exp(_beta*(_population[0].get_fitness() - child.get_fitness()));
-    if (_rnd->Rannyu() < acceptance) {
+    if (_rnd->Rannyu() < acceptance && child.check_constraints()) {
         _population[0] = child;
         _n_accepted++;
         if (child.get_fitness() < _elite.get_fitness()) _elite = child;
