@@ -2,9 +2,9 @@ CC = g++
 CFLAGS = -Wall -O3
 
 all : exercise08.1.exe exercise08.2.exe
-exercise08.1.exe : exercise08.1.o random.o variationalMC.o
+exercise08.1.exe : exercise08.1.o random.o variationalMC.o data_blocking.h
 	$(CC) -o $@ $^
-exercise08.2.exe : exercise08.2.o random.o variationalMC.o
+exercise08.2.exe : exercise08.2.o random.o variationalMC.o data_blocking.h
 	$(CC) -o $@ $^
 exercise08.1.o : exercise08.1.cpp random.h
 	$(CC) -c $< -o $@ $(CFLAGS)

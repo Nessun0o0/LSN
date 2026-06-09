@@ -1,6 +1,6 @@
 build/
 .ipynb_checkpoints/
+.venv
 *.out
 *.o
 *.exe
-07-Exercises/OUTPUT-*

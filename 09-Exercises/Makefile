@@ -13,4 +13,6 @@ population.o : population.cpp population.h
 	$(CC) -c $< -o $@ $(CFLAGS)
 
 clean :
-	rm *.o *.exe *.out
+	rm -f *.exe *.out
+remove :
+	rm OUTPUT/*.out

@@ -5,6 +5,7 @@
 
 #include "random.h"
 #include "variationalMC.h"
+#include "data_blocking.h"
 
 
 using namespace std;
@@ -14,9 +15,12 @@ int main(int argc, char *argv[]) {
     Random rnd;
     rnd.SetSeedFromFile("seed.in", "Primes");
     
+    // Input
     double x, sigma, mu, delta;
     ifstream input("input_1.dat");
     if (input.is_open()) {
+        char tmp[512];
+        for (int i = 0; i < 5; i++) input >> tmp;
         input >> x >> mu >> sigma >> delta;
     } else {
         cerr << "ERROR: can't open input_1.dat" << endl;
@@ -29,6 +33,7 @@ int main(int argc, char *argv[]) {
     int N = 100, L=1000;
     vector<double> sum_H(N), sum2_H(N), error_H(N);
 
+    // Performs metropolis steps and saves the results inside the data blocks
     for (int i = 0; i < N; i++) {
         double block_sum = 0.;
         for (int j = 0; j < L; j++) {
@@ -39,26 +44,9 @@ int main(int argc, char *argv[]) {
         sum2_H[i] = sum_H[i]*sum_H[i];
     }
 
-    error_H[0] = 0.;
-    for (int i = 1; i < N; i++) {
-        sum_H[i] += sum_H[i-1];
-        sum2_H[i] += sum2_H[i-1];
-        error_H[i] = sqrt((sum2_H[i]/(i+1) - pow(sum_H[i]/(i+1), 2))/i);
-    }
-    cout << sum_H[N-1] / N << " +- " << error_H[N-1] << endl;
-
-    cout << H_var.get_acceptance() << endl;
-
-    ofstream output("OUTPUT/output_1.out");
-    if (output.is_open()) {
-        output << "# BLOCK\tENERGY\tERROR\n";
-        for (int i = 0; i < N; i++) {
-            output << i+1 << "\t" << sum_H[i] / (i+1) << "\t" << error_H[i] << endl;
-        }
-    } else {
-        cerr << "ERROR: can't open output_1.dat" << endl;
-    }
-    output.close();
+    // Compute averages and errors and write results to file
+    averages_from_blocks(sum_H, sum2_H, error_H);
+    write_data(sum_H, error_H, "OUTPUT/output_1.out");
 
     return 0;
 }

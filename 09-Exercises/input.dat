@@ -1,1 +1,2 @@
-34 100 10000
+# N_CITIES   N_INDIVIDUALS   N_GENERATIONS   CIRCLE_SIMULATION
+        34             100            1000                   0
