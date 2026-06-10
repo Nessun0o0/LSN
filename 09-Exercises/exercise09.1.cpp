@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
     Random rnd;
     rnd.SetSeedFromFile("seed.in", "Primes");
     
-    double n_cities, n_individuals, n_generations;
+    int n_cities, n_individuals, n_generations;
     bool circle_simulation;
     // Input the parameters from file
     ifstream input("input.dat");

@@ -22,7 +22,6 @@ int main (int argc, char *argv[]){
 
     // Execute max_steps steps on M cubic lattice random walks
     for (int i = 0; i < max_steps; i++) {
-        vector<double> datablocks(N), datablocks2(N);
         
         double sum_datablocks = 0.;
         double sum_datablocks2 = 0.;
@@ -61,8 +60,7 @@ int main (int argc, char *argv[]){
     vector<vector<double>> positions_continuum(M, vector<double>{0.,0.,0.});
 
     for (int i = 0; i < max_steps; i++) {
-        vector<double> datablocks(N), datablocks2(N);
-        
+                
         double sum_datablocks = 0.;
         double sum_datablocks2 = 0.;
 

@@ -90,7 +90,7 @@ double Random :: Exp(double mean){
 }
 
 double Random :: Lorentz(double mean, double gamma){
-   return gamma * tan(M_PI*(Rannyu()-0.5));
+   return mean + gamma * tan(M_PI*(Rannyu()-0.5));
 }
 
 /****************************************************************
